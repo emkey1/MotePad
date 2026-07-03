@@ -50,15 +50,15 @@ open -a "$PWD/MotePad.app" somefile.txt   # open a file (exercises application:o
 
 ## Install
 
-Download `MotePad-1.0.pkg` from the
+Download `MotePad-1.1.pkg` from the
 [Releases page](https://github.com/emkey1/MotePad/releases) and double-click it to install MotePad
 into `/Applications`. To build the installer yourself: `./package.sh` (produces
-`dist/MotePad-1.0.pkg`).
+`dist/MotePad-1.1.pkg`).
 
 The installer and app are **ad-hoc signed** — not notarized with an Apple Developer ID — so macOS
 Gatekeeper will warn that the developer is unidentified. To proceed:
 
-- **Installer:** right-click `MotePad-1.0.pkg` → **Open** → **Open** (or approve it in
+- **Installer:** right-click `MotePad-1.1.pkg` → **Open** → **Open** (or approve it in
   System Settings → Privacy & Security).
 - **First launch:** right-click `/Applications/MotePad.app` → **Open** → **Open**.
 - Or clear the quarantine flag from a terminal:
@@ -95,15 +95,15 @@ MotePad does that directly from assembly:
 | **Edit:** Undo/Redo, Cut/Copy/Paste/Delete/Select All | ⌘Z/⇧⌘Z, ⌘X/⌘C/⌘V/⌦/⌘A (first responder) |
 | Find / Find Next / Replace | ⌘F / ⌘G / ⇧⌘F via the native find bar (`performTextFinderAction:`) |
 | Go To (line) | ⌘L modal with a numeric field, then caret jump |
-| Time/Date | Insert Date and Time (localized) at the caret, undo-aware |
-| **Format:** Word Wrap | toggles container width-tracking + horizontal scroller (on by default) |
+| Time/Date | ⌘D Insert Date and Time (localized) at the caret, undo-aware |
+| **Format:** Word Wrap | ⌥⌘W toggles container width-tracking + horizontal scroller (on by default) |
 | Font… | ⌘T Show Fonts (`NSFontManager`) |
-| **View:** Status Bar | Ln/Col bar, updates on caret move, hidden by default (matches original) |
-| Line Numbers (optional) | `NSRulerView` subclass drawing logical line numbers in a gutter |
+| **View:** Status Bar | ⌥⌘S Ln/Col bar, updates on caret move, hidden by default (matches original) |
+| Line Numbers (optional) | ⌥⌘L `NSRulerView` subclass drawing logical line numbers in a gutter |
 | Right-click context menu | native `NSTextView` context menu |
 | Title + unsaved indicator | window title = filename / "Untitled"; unsaved = native edited-dot (`setDocumentEdited:`) + represented URL |
 | Drag-and-drop file load | `application:openFile:` (Finder/dock) + `MPTextView` file-drop |
-| **Help:** View Help / About | Help menu "MotePad Help"; About in the app menu (standard about panel) |
+| **Help:** View Help / About | ⌘? Help menu "MotePad Help"; About in the app menu (standard about panel) |
 
 ### Intentional macOS adaptations
 

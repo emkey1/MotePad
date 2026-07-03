@@ -362,6 +362,8 @@ mpcls_start:
     DEFSEL sel_tag,               "tag"
     DEFSEL sel_popUpPositioning,  "popUpMenuPositioningItem:atLocation:inView:"
     DEFSEL sel_winMenu,           "winMenu:"
+    DEFSEL sel_keyEquivalent,     "keyEquivalent"
+    DEFSEL sel_keyEquivMask,      "keyEquivalentModifierMask"
 
     // close descriptor tables
     .section __DATA,__mpseldsc
@@ -450,6 +452,7 @@ d_hdr_menu:     .asciz "== menu bar =="
 d_hdr_winbar:   .asciz "== in-window menu bar =="
 d_sep_top:      .asciz "----"
 d_sep_item:     .asciz "  (separator)"
+fmt_item:       .asciz "%@\tkey='%@' mask=0x%lx"
 d_hdr_io:       .asciz "== io roundtrip =="
 iopath:         .asciz "/private/tmp/motepad_selftest.txt"
 iosample:       .asciz "hello from MotePad IO roundtrip\nline two"
@@ -475,6 +478,8 @@ k_v: .asciz "v"
 k_a: .asciz "a"
 k_h: .asciz "h"
 k_q: .asciz "q"
+k_d: .asciz "d"
+k_qmark: .asciz "?"
 
 //==============================================================================
 // Mutable state
@@ -832,16 +837,16 @@ _fill_win_file:
     mov  x29, sp
     stp  x19, x20, [sp, #16]
     mov  x19, x0
-    ADDCTL x19, mi_new,    str_empty, sel_newDoc,    #-1
-    ADDCTL x19, mi_open,   str_empty, sel_openDoc,   #-1
-    ADDCTL x19, mi_save,   str_empty, sel_saveDoc,   #-1
-    ADDCTL x19, mi_saveas, str_empty, sel_saveAsDoc, #-1
+    ADDCTL x19, mi_new,    k_n, sel_newDoc,    #-1
+    ADDCTL x19, mi_open,   k_o, sel_openDoc,   #-1
+    ADDCTL x19, mi_save,   k_s, sel_saveDoc,   #-1
+    ADDCTL x19, mi_saveas, k_s, sel_saveAsDoc, (MOD_CMD|MOD_SHIFT)
     SEP  x19
-    ADDSTD x19, mi_pagesetup, str_empty, sel_runPageLayout, #-1
-    ADDSTD x19, mi_print,     str_empty, sel_print,        #-1
+    ADDSTD x19, mi_pagesetup, k_p, sel_runPageLayout, (MOD_CMD|MOD_SHIFT)
+    ADDSTD x19, mi_print,     k_p, sel_print,        #-1
     SEP  x19
-    ADDSTD x19, mi_close, str_empty, sel_performClose, #-1
-    ADDSTD x19, mi_quit,  str_empty, sel_terminate,    #-1
+    ADDSTD x19, mi_close, k_w, sel_performClose, #-1
+    ADDSTD x19, mi_quit,  k_q, sel_terminate,    #-1
     ldp  x19, x20, [sp, #16]
     ldp  x29, x30, [sp], #32
     ret
@@ -852,24 +857,24 @@ _fill_win_edit:
     mov  x29, sp
     stp  x19, x20, [sp, #16]
     mov  x19, x0
-    ADDSTD x19, mi_undo, str_empty, sel_undo, #-1
-    ADDSTD x19, mi_redo, str_empty, sel_redo, #-1
+    ADDSTD x19, mi_undo, k_z, sel_undo, #-1
+    ADDSTD x19, mi_redo, k_z, sel_redo, (MOD_CMD|MOD_SHIFT)
     SEP  x19
-    ADDSTD x19, mi_cut,       str_empty, sel_cut,       #-1
-    ADDSTD x19, mi_copy,      str_empty, sel_copy,      #-1
-    ADDSTD x19, mi_paste,     str_empty, sel_paste,     #-1
-    ADDSTD x19, mi_delete,    str_empty, sel_delete,    #-1
-    ADDSTD x19, mi_selectall, str_empty, sel_selectAll, #-1
+    ADDSTD x19, mi_cut,       k_x, sel_cut,       #-1
+    ADDSTD x19, mi_copy,      k_c, sel_copy,      #-1
+    ADDSTD x19, mi_paste,     k_v, sel_paste,     #-1
+    ADDSTD x19, mi_delete,    str_empty, sel_delete, #-1
+    ADDSTD x19, mi_selectall, k_a, sel_selectAll, #-1
     SEP  x19
-    ADDSTD x19, mi_find,     str_empty, sel_perfFinder, #-1
+    ADDSTD x19, mi_find,     k_f, sel_perfFinder, #-1
     SETTAG 1
-    ADDSTD x19, mi_findnext, str_empty, sel_perfFinder, #-1
+    ADDSTD x19, mi_findnext, k_g, sel_perfFinder, #-1
     SETTAG 2
-    ADDSTD x19, mi_replace,  str_empty, sel_perfFinder, #-1
+    ADDSTD x19, mi_replace,  k_f, sel_perfFinder, (MOD_CMD|MOD_SHIFT)
     SETTAG 12
-    ADDCTL x19, mi_goto,     str_empty, sel_gotoLine,   #-1
+    ADDCTL x19, mi_goto,     k_l, sel_gotoLine,   #-1
     SEP  x19
-    ADDCTL x19, mi_datetime, str_empty, sel_insertDateTime, #-1
+    ADDCTL x19, mi_datetime, k_d, sel_insertDateTime, #-1
     ldp  x19, x20, [sp, #16]
     ldp  x29, x30, [sp], #32
     ret
@@ -880,14 +885,14 @@ _fill_win_format:
     mov  x29, sp
     stp  x19, x20, [sp, #16]
     mov  x19, x0
-    ADDCTL x19, mi_wordwrap, str_empty, sel_toggleWordWrap, #-1
+    ADDCTL x19, mi_wordwrap, k_w, sel_toggleWordWrap, (MOD_CMD|MOD_OPT)
     // Show Fonts -> target = font manager
     LDG  x0, cls_NSFontManager
     CALL sel_sharedFontManager
     mov  x20, x0
     mov  x0, x19
     LEA  x1, mi_showfonts
-    LEA  x2, str_empty
+    LEA  x2, k_t
     LDG  x3, sel_orderFrontFontPanel
     mov  w4, #-1
     mov  x5, x20
@@ -902,8 +907,8 @@ _fill_win_view:
     mov  x29, sp
     stp  x19, x20, [sp, #16]
     mov  x19, x0
-    ADDCTL x19, mi_statusbar,   str_empty, sel_toggleStatusBar,   #-1
-    ADDCTL x19, mi_linenumbers, str_empty, sel_toggleLineNumbers, #-1
+    ADDCTL x19, mi_statusbar,   k_s, sel_toggleStatusBar,   (MOD_CMD|MOD_OPT)
+    ADDCTL x19, mi_linenumbers, k_l, sel_toggleLineNumbers, (MOD_CMD|MOD_OPT)
     ldp  x19, x20, [sp, #16]
     ldp  x29, x30, [sp], #32
     ret
@@ -914,7 +919,7 @@ _fill_win_help:
     mov  x29, sp
     stp  x19, x20, [sp, #16]
     mov  x19, x0
-    ADDCTL x19, mi_help, str_empty, sel_showHelp, #-1
+    ADDCTL x19, mi_help, k_qmark, sel_showHelp, #-1
     SEP  x19
     ADDSTD x19, mi_about, str_empty, sel_orderFrontStdAbout, #-1
     ldp  x19, x20, [sp, #16]
@@ -1422,14 +1427,14 @@ _build_menu:
     SETTAG 12
     ADDCTL x20, mi_goto,     k_l, sel_gotoLine,   #-1
     SEP  x20
-    ADDCTL x20, mi_datetime, str_empty, sel_insertDateTime, #-1
+    ADDCTL x20, mi_datetime, k_d, sel_insertDateTime, #-1
 
     // ---- Format menu ----
     mov  x0, x19
     LEA  x1, mt_format
     bl   _add_submenu
     mov  x20, x0
-    ADDCTL x20, mi_wordwrap, str_empty, sel_toggleWordWrap, #-1
+    ADDCTL x20, mi_wordwrap, k_w, sel_toggleWordWrap, (MOD_CMD|MOD_OPT)
     // Show Fonts -> target = fontManager
     mov  x0, x20
     LEA  x1, mi_showfonts
@@ -1444,15 +1449,15 @@ _build_menu:
     LEA  x1, mt_view
     bl   _add_submenu
     mov  x20, x0
-    ADDCTL x20, mi_statusbar,   str_empty, sel_toggleStatusBar,   #-1
-    ADDCTL x20, mi_linenumbers, str_empty, sel_toggleLineNumbers, #-1
+    ADDCTL x20, mi_statusbar,   k_s, sel_toggleStatusBar,   (MOD_CMD|MOD_OPT)
+    ADDCTL x20, mi_linenumbers, k_l, sel_toggleLineNumbers, (MOD_CMD|MOD_OPT)
 
     // ---- Help menu ----
     mov  x0, x19
     LEA  x1, mt_help
     bl   _add_submenu
     mov  x20, x0
-    ADDCTL x20, mi_help, str_empty, sel_showHelp, #-1
+    ADDCTL x20, mi_help, k_qmark, sel_showHelp, #-1
 
     // [app setMainMenu:mainMenu]
     LDG  x0, gApp
@@ -1476,6 +1481,45 @@ _puts_nsstr:
     cbz  x0, 1f
     bl   _puts
 1:  ldp  x29, x30, [sp], #16
+    ret
+
+//------------------------------------------------------------------------------
+// _puts_item: print "title  key='k' mask=0x..." for a menu item (self-test only)
+//------------------------------------------------------------------------------
+    .p2align 2
+_puts_item:
+    stp  x29, x30, [sp, #-48]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    stp  x21, x22, [sp, #32]
+    mov  x19, x0
+    mov  x0, x19
+    LDG  x1, sel_title
+    bl   _objc_msgSend
+    mov  x20, x0
+    mov  x0, x19
+    LDG  x1, sel_keyEquivalent
+    bl   _objc_msgSend
+    mov  x21, x0
+    mov  x0, x19
+    LDG  x1, sel_keyEquivMask
+    bl   _objc_msgSend
+    mov  x22, x0
+    LEA  x0, fmt_item
+    bl   _nsstr
+    mov  x2, x0
+    LDG  x0, cls_NSString
+    LDG  x1, sel_stringWithFormat
+    sub  sp, sp, #32
+    str  x20, [sp]
+    str  x21, [sp, #8]
+    str  x22, [sp, #16]
+    bl   _objc_msgSend
+    add  sp, sp, #32
+    bl   _puts_nsstr
+    ldp  x19, x20, [sp, #16]
+    ldp  x21, x22, [sp, #32]
+    ldp  x29, x30, [sp], #48
     ret
 
 //------------------------------------------------------------------------------
@@ -1546,8 +1590,7 @@ Litem:
     b    LitemNext
 LnotSep:
     mov  x0, x26
-    CALL sel_title
-    bl   _puts_nsstr
+    bl   _puts_item
 LitemNext:
     add  x24, x24, #1
     b    Litem
@@ -1586,8 +1629,7 @@ Lwitem:
     b    Lwinext
 Lwnotsep:
     mov  x0, x26
-    CALL sel_title
-    bl   _puts_nsstr
+    bl   _puts_item
 Lwinext:
     add  x24, x24, #1
     b    Lwitem

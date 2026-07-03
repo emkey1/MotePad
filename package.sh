@@ -24,7 +24,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION="1.0"
+VERSION="1.1"
 IDENTIFIER="com.plummerssoftware.motepad"
 APP="MotePad.app"
 OUT="dist/MotePad-${VERSION}.pkg"
