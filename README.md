@@ -10,6 +10,10 @@ runtime. It keeps the original's functionality but adopts the macOS look and fee
 top-of-screen menu bar, ⌘-based shortcuts, native Open/Save panels, the native find bar, the native
 font panel, and the native "document edited" dot in the close button.
 
+It also keeps a retro **in-window menu bar** (File / Edit / Format / View / Help) across the top of
+the window — a nod to the original's Windows layout — so you get *both* the native global menu bar
+and the classic in-window one. Both drive the same commands.
+
 ## Origin & credits
 
 The idea and all its heritage come from

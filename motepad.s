@@ -172,6 +172,7 @@ mpcls_start:
     DEFCLS cls_NSDateFormatter,   "NSDateFormatter"
     DEFCLS cls_NSRulerView,       "NSRulerView"
     DEFCLS cls_NSArray,           "NSArray"
+    DEFCLS cls_NSButton,          "NSButton"
 
 //==============================================================================
 // Cached selectors
@@ -355,6 +356,12 @@ mpcls_start:
     DEFSEL sel_drawHashMarks,     "drawHashMarksAndLabelsInRect:"
     DEFSEL sel_setNeedsDisplay,   "setNeedsDisplay:"
     DEFSEL sel_characterAtIndex,  "characterAtIndex:"
+    // in-window menu bar
+    DEFSEL sel_setBordered,       "setBordered:"
+    DEFSEL sel_setAction,         "setAction:"
+    DEFSEL sel_tag,               "tag"
+    DEFSEL sel_popUpPositioning,  "popUpMenuPositioningItem:atLocation:inView:"
+    DEFSEL sel_winMenu,           "winMenu:"
 
     // close descriptor tables
     .section __DATA,__mpseldsc
@@ -440,6 +447,7 @@ ln_sample:      .asciz "line one\nline two\nline three\nline four\nline five\n"
 // self-test dump headers
 d_hdr_win:      .asciz "== window title =="
 d_hdr_menu:     .asciz "== menu bar =="
+d_hdr_winbar:   .asciz "== in-window menu bar =="
 d_sep_top:      .asciz "----"
 d_sep_item:     .asciz "  (separator)"
 d_hdr_io:       .asciz "== io roundtrip =="
@@ -483,6 +491,8 @@ gStatusView:    .quad 0
 gStatusField:   .quad 0
 gRuler:         .quad 0
 gTVClass:       .quad 0
+gWinBar:        .quad 0
+gWinMenus:      .quad 0, 0, 0, 0, 0
 gFileURL:       .quad 0
 gDirty:         .byte 0
 gWrap:          .byte 1
@@ -659,6 +669,7 @@ _make_controller:
     ADDMETHOD x19, sel_selChange,         _imp_selChange,         v@:@
     ADDMETHOD x19, sel_validateMenuItem,  _imp_validateMenuItem,  c@:@
     ADDMETHOD x19, sel_openFile,          _imp_openFile,          c@:@@
+    ADDMETHOD x19, sel_winMenu,           _imp_winMenu,           v@:@
 
     mov  x0, x19
     bl   _objc_registerClassPair
@@ -750,6 +761,290 @@ _setup_ruler:
     LDG  x0, gScroll
     LDG  x1, sel_setRulersVisible
     mov  w2, #0
+    bl   _objc_msgSend
+    ldp  x19, x20, [sp, #16]
+    ldp  x29, x30, [sp], #32
+    ret
+
+    .p2align 2
+// _add_winbtn: add one menu-bar button. x0=bar x1=titleCStr x2=tag x3=xpos
+_add_winbtn:
+    stp  x29, x30, [sp, #-64]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    stp  x21, x22, [sp, #32]
+    stp  x23, x24, [sp, #48]
+    mov  x19, x0                       // bar
+    mov  x20, x1                       // title cstr
+    mov  x21, x2                       // tag
+    mov  x22, x3                       // xpos
+    LDG  x0, cls_NSButton
+    CALL sel_alloc
+    mov  x23, x0
+    scvtf d0, x22                      // x
+    mov  w9, #2
+    scvtf d1, w9                       // y
+    mov  w9, #66
+    scvtf d2, w9                       // width
+    mov  w9, #22
+    scvtf d3, w9                       // height
+    mov  x0, x23
+    CALL sel_initWithFrame
+    mov  x23, x0
+    mov  x0, x20
+    bl   _nsstr
+    mov  x24, x0
+    mov  x0, x23
+    LDG  x1, sel_setTitle
+    mov  x2, x24
+    bl   _objc_msgSend
+    mov  x0, x23
+    LDG  x1, sel_setBordered
+    mov  w2, #0
+    bl   _objc_msgSend
+    mov  x0, x23
+    LDG  x1, sel_setTag
+    mov  x2, x21
+    bl   _objc_msgSend
+    mov  x0, x23
+    LDG  x1, sel_setTarget
+    LDG  x2, gController
+    bl   _objc_msgSend
+    mov  x0, x23
+    LDG  x1, sel_setAction
+    LDG  x2, sel_winMenu
+    bl   _objc_msgSend
+    mov  x0, x19
+    LDG  x1, sel_addSubview
+    mov  x2, x23
+    bl   _objc_msgSend
+    ldp  x19, x20, [sp, #16]
+    ldp  x21, x22, [sp, #32]
+    ldp  x23, x24, [sp, #48]
+    ldp  x29, x30, [sp], #64
+    ret
+
+// Populate a window-bar menu (x0 = NSMenu) with the same commands as the global
+// menu bar, but with no key equivalents (the global bar owns the shortcuts).
+    .p2align 2
+_fill_win_file:
+    stp  x29, x30, [sp, #-32]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    mov  x19, x0
+    ADDCTL x19, mi_new,    str_empty, sel_newDoc,    #-1
+    ADDCTL x19, mi_open,   str_empty, sel_openDoc,   #-1
+    ADDCTL x19, mi_save,   str_empty, sel_saveDoc,   #-1
+    ADDCTL x19, mi_saveas, str_empty, sel_saveAsDoc, #-1
+    SEP  x19
+    ADDSTD x19, mi_pagesetup, str_empty, sel_runPageLayout, #-1
+    ADDSTD x19, mi_print,     str_empty, sel_print,        #-1
+    SEP  x19
+    ADDSTD x19, mi_close, str_empty, sel_performClose, #-1
+    ADDSTD x19, mi_quit,  str_empty, sel_terminate,    #-1
+    ldp  x19, x20, [sp, #16]
+    ldp  x29, x30, [sp], #32
+    ret
+
+    .p2align 2
+_fill_win_edit:
+    stp  x29, x30, [sp, #-32]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    mov  x19, x0
+    ADDSTD x19, mi_undo, str_empty, sel_undo, #-1
+    ADDSTD x19, mi_redo, str_empty, sel_redo, #-1
+    SEP  x19
+    ADDSTD x19, mi_cut,       str_empty, sel_cut,       #-1
+    ADDSTD x19, mi_copy,      str_empty, sel_copy,      #-1
+    ADDSTD x19, mi_paste,     str_empty, sel_paste,     #-1
+    ADDSTD x19, mi_delete,    str_empty, sel_delete,    #-1
+    ADDSTD x19, mi_selectall, str_empty, sel_selectAll, #-1
+    SEP  x19
+    ADDSTD x19, mi_find,     str_empty, sel_perfFinder, #-1
+    SETTAG 1
+    ADDSTD x19, mi_findnext, str_empty, sel_perfFinder, #-1
+    SETTAG 2
+    ADDSTD x19, mi_replace,  str_empty, sel_perfFinder, #-1
+    SETTAG 12
+    ADDCTL x19, mi_goto,     str_empty, sel_gotoLine,   #-1
+    SEP  x19
+    ADDCTL x19, mi_datetime, str_empty, sel_insertDateTime, #-1
+    ldp  x19, x20, [sp, #16]
+    ldp  x29, x30, [sp], #32
+    ret
+
+    .p2align 2
+_fill_win_format:
+    stp  x29, x30, [sp, #-32]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    mov  x19, x0
+    ADDCTL x19, mi_wordwrap, str_empty, sel_toggleWordWrap, #-1
+    // Show Fonts -> target = font manager
+    LDG  x0, cls_NSFontManager
+    CALL sel_sharedFontManager
+    mov  x20, x0
+    mov  x0, x19
+    LEA  x1, mi_showfonts
+    LEA  x2, str_empty
+    LDG  x3, sel_orderFrontFontPanel
+    mov  w4, #-1
+    mov  x5, x20
+    bl   _add_item
+    ldp  x19, x20, [sp, #16]
+    ldp  x29, x30, [sp], #32
+    ret
+
+    .p2align 2
+_fill_win_view:
+    stp  x29, x30, [sp, #-32]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    mov  x19, x0
+    ADDCTL x19, mi_statusbar,   str_empty, sel_toggleStatusBar,   #-1
+    ADDCTL x19, mi_linenumbers, str_empty, sel_toggleLineNumbers, #-1
+    ldp  x19, x20, [sp, #16]
+    ldp  x29, x30, [sp], #32
+    ret
+
+    .p2align 2
+_fill_win_help:
+    stp  x29, x30, [sp, #-32]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    mov  x19, x0
+    ADDCTL x19, mi_help, str_empty, sel_showHelp, #-1
+    SEP  x19
+    ADDSTD x19, mi_about, str_empty, sel_orderFrontStdAbout, #-1
+    ldp  x19, x20, [sp, #16]
+    ldp  x29, x30, [sp], #32
+    ret
+
+    .p2align 2
+// _build_winbar: create the in-window menu bar (5 buttons + their menus).
+_build_winbar:
+    stp  x29, x30, [sp, #-32]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    // bar view (placeholder frame; positioned by _relayout)
+    LDG  x0, cls_NSView
+    CALL sel_alloc
+    mov  x19, x0
+    fmov d0, xzr
+    fmov d1, xzr
+    mov  w9, #800
+    scvtf d2, w9
+    mov  w9, #26
+    scvtf d3, w9
+    mov  x0, x19
+    CALL sel_initWithFrame
+    mov  x19, x0
+    LEA  x9, gWinBar
+    str  x19, [x9]
+    mov  x0, x19
+    LDG  x1, sel_setAutoresizingMask
+    mov  w2, #10                       // width | flexible bottom margin (pin to top)
+    bl   _objc_msgSend
+    // bottom hairline
+    LDG  x0, cls_NSBox
+    CALL sel_alloc
+    mov  x20, x0
+    fmov d0, xzr
+    fmov d1, xzr
+    mov  w9, #800
+    scvtf d2, w9
+    mov  w9, #1
+    scvtf d3, w9
+    mov  x0, x20
+    CALL sel_initWithFrame
+    mov  x20, x0
+    mov  x0, x20
+    LDG  x1, sel_setBoxType
+    mov  w2, #2
+    bl   _objc_msgSend
+    mov  x0, x20
+    LDG  x1, sel_setAutoresizingMask
+    mov  w2, #2
+    bl   _objc_msgSend
+    mov  x0, x19
+    LDG  x1, sel_addSubview
+    mov  x2, x20
+    bl   _objc_msgSend
+    // File
+    LDG  x0, cls_NSMenu
+    CALL sel_alloc
+    CALL sel_init
+    mov  x20, x0
+    LEA  x9, gWinMenus
+    str  x20, [x9]
+    mov  x0, x20
+    bl   _fill_win_file
+    mov  x0, x19
+    LEA  x1, mt_file
+    mov  x2, #0
+    mov  x3, #6
+    bl   _add_winbtn
+    // Edit
+    LDG  x0, cls_NSMenu
+    CALL sel_alloc
+    CALL sel_init
+    mov  x20, x0
+    LEA  x9, gWinMenus
+    str  x20, [x9, #8]
+    mov  x0, x20
+    bl   _fill_win_edit
+    mov  x0, x19
+    LEA  x1, mt_edit
+    mov  x2, #1
+    mov  x3, #74
+    bl   _add_winbtn
+    // Format
+    LDG  x0, cls_NSMenu
+    CALL sel_alloc
+    CALL sel_init
+    mov  x20, x0
+    LEA  x9, gWinMenus
+    str  x20, [x9, #16]
+    mov  x0, x20
+    bl   _fill_win_format
+    mov  x0, x19
+    LEA  x1, mt_format
+    mov  x2, #2
+    mov  x3, #142
+    bl   _add_winbtn
+    // View
+    LDG  x0, cls_NSMenu
+    CALL sel_alloc
+    CALL sel_init
+    mov  x20, x0
+    LEA  x9, gWinMenus
+    str  x20, [x9, #24]
+    mov  x0, x20
+    bl   _fill_win_view
+    mov  x0, x19
+    LEA  x1, mt_view
+    mov  x2, #3
+    mov  x3, #210
+    bl   _add_winbtn
+    // Help
+    LDG  x0, cls_NSMenu
+    CALL sel_alloc
+    CALL sel_init
+    mov  x20, x0
+    LEA  x9, gWinMenus
+    str  x20, [x9, #32]
+    mov  x0, x20
+    bl   _fill_win_help
+    mov  x0, x19
+    LEA  x1, mt_help
+    mov  x2, #4
+    mov  x3, #278
+    bl   _add_winbtn
+    // attach bar to content view
+    LDG  x0, gContentView
+    LDG  x1, sel_addSubview
+    mov  x2, x19
     bl   _objc_msgSend
     ldp  x19, x20, [sp, #16]
     ldp  x29, x30, [sp], #32
@@ -953,6 +1248,9 @@ _build_window:
     CALL sel_makeKeyAndFront
     // line-number ruler (created hidden)
     bl   _setup_ruler
+    // in-window menu bar, then lay everything out
+    bl   _build_winbar
+    bl   _relayout
 
     ldp  x19, x20, [sp, #16]
     ldp  x21, x22, [sp, #32]
@@ -1257,6 +1555,47 @@ LnextTop:
     add  x21, x21, #1
     b    Ltop
 Ldumpdone:
+    // ---- in-window menu bar (walk the 5 popup menus) ----
+    LEA  x0, d_hdr_winbar
+    bl   _puts
+    mov  x21, #0                       // menu index
+Lwmenu:
+    cmp  x21, #5
+    b.ge Lwmdone
+    LEA  x9, gWinMenus
+    ldr  x19, [x9, x21, lsl #3]
+    LEA  x0, d_sep_top
+    bl   _puts
+    mov  x0, x19
+    CALL sel_numberOfItems
+    mov  x23, x0
+    mov  x24, #0
+Lwitem:
+    cmp  x24, x23
+    b.ge Lwnext
+    mov  x0, x19
+    mov  x2, x24
+    CALL sel_itemAtIndex
+    mov  x26, x0
+    mov  x0, x26
+    CALL sel_isSeparator
+    and  x0, x0, #0xff
+    cbz  x0, Lwnotsep
+    LEA  x0, d_sep_item
+    bl   _puts
+    b    Lwinext
+Lwnotsep:
+    mov  x0, x26
+    CALL sel_title
+    bl   _puts_nsstr
+Lwinext:
+    add  x24, x24, #1
+    b    Lwitem
+Lwnext:
+    add  x21, x21, #1
+    b    Lwmenu
+Lwmdone:
+
     // ---- document IO round trip (write sample, clear, read back, print) ----
     LEA  x0, d_hdr_io
     bl   _puts
@@ -1708,26 +2047,39 @@ _build_status:
     ret
 
     .p2align 2
-// _relayout: size the scroll view (and status view) per gStatusVisible.
+// _relayout: place the in-window menu bar (top 26px), the scroll view, and the
+// optional status bar (bottom 22px) inside the content view.
 _relayout:
-    stp  x29, x30, [sp, #-32]!
+    stp  x29, x30, [sp, #-48]!
     mov  x29, sp
-    stp  d8, d9, [sp, #16]              // d8/d9 callee-saved: hold W/H across calls
+    stp  d8, d9, [sp, #16]              // W / H
+    stp  d10, d11, [sp, #32]           // 26 / 22 constants
     LDG  x0, gContentView
     LDG  x1, sel_bounds
     bl   _objc_msgSend
     fmov d8, d2                        // W
     fmov d9, d3                        // H
+    mov  w9, #26
+    scvtf d10, w9                     // top bar height
+    mov  w9, #22
+    scvtf d11, w9                     // status bar height
+    // menu bar = (0, H-26, W, 26)
+    fmov d0, xzr
+    fsub d1, d9, d10
+    fmov d2, d8
+    fmov d3, d10
+    LDG  x0, gWinBar
+    LDG  x1, sel_setFrame
+    bl   _objc_msgSend
     LEA  x9, gStatusVisible
     ldrb w9, [x9]
     cbz  w9, 1f
-    // status visible: scroll = (0,22,W,H-22)
-    mov  w10, #22
-    scvtf d10, w10
+    // status visible: scroll = (0,22,W,H-26-22)
     fmov d0, xzr
-    fmov d1, d10
+    fmov d1, d11
     fmov d2, d8
     fsub d3, d9, d10
+    fsub d3, d3, d11
     LDG  x0, gScroll
     LDG  x1, sel_setFrame
     bl   _objc_msgSend
@@ -1735,22 +2087,22 @@ _relayout:
     fmov d0, xzr
     fmov d1, xzr
     fmov d2, d8
-    mov  w10, #22
-    scvtf d3, w10
+    fmov d3, d11
     LDG  x0, gStatusView
     LDG  x1, sel_setFrame
     bl   _objc_msgSend
     b    2f
-1:  // hidden: scroll fills content
+1:  // no status: scroll = (0,0,W,H-26)
     fmov d0, xzr
     fmov d1, xzr
     fmov d2, d8
-    fmov d3, d9
+    fsub d3, d9, d10
     LDG  x0, gScroll
     LDG  x1, sel_setFrame
     bl   _objc_msgSend
 2:  ldp  d8, d9, [sp, #16]
-    ldp  x29, x30, [sp], #32
+    ldp  d10, d11, [sp, #32]
+    ldp  x29, x30, [sp], #48
     ret
 
     .p2align 2
@@ -2522,4 +2874,28 @@ _imp_ruler_draw:
     ldp  d8,  d9,  [sp, #80]
     ldp  d10, d11, [sp, #96]
     ldp  x29, x30, [sp], #128
+    ret
+
+    .p2align 2
+// void winMenu: -> pop the in-window menu for the clicked bar button, below it
+_imp_winMenu:
+    stp  x29, x30, [sp, #-32]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    mov  x19, x2                       // sender (button)
+    mov  x0, x19
+    LDG  x1, sel_tag
+    bl   _objc_msgSend                 // x0 = tag (0..4)
+    LEA  x9, gWinMenus
+    ldr  x20, [x9, x0, lsl #3]         // menu = gWinMenus[tag]
+    // [menu popUpMenuPositioningItem:nil atLocation:(0,0) inView:sender]
+    mov  x0, x20
+    LDG  x1, sel_popUpPositioning
+    mov  x2, #0
+    fmov d0, xzr
+    fmov d1, xzr
+    mov  x3, x19
+    bl   _objc_msgSend
+    ldp  x19, x20, [sp, #16]
+    ldp  x29, x30, [sp], #32
     ret
