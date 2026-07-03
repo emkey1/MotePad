@@ -38,9 +38,13 @@ if [ -z "$APP_IDENTITY" ]; then
   APP_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
     | sed -n 's/.*"\(Developer ID Application: [^"]*\)".*/\1/p' | head -1)"
 fi
-if [ -z "$PKG_IDENTITY" ]; then
-  PKG_IDENTITY="$(security find-identity -v 2>/dev/null \
-    | sed -n 's/.*"\(Developer ID Installer: [^"]*\)".*/\1/p' | head -1)"
+# Developer ID Installer certs are NOT listed by `security find-identity` (they
+# aren't code-signing certs), so derive the installer identity from the app
+# identity — same name + team, "Application" -> "Installer" — and use it only if
+# such a certificate actually exists in the keychain.
+if [ -z "$PKG_IDENTITY" ] && [ -n "$APP_IDENTITY" ] \
+   && security find-certificate -c "Developer ID Installer" >/dev/null 2>&1; then
+  PKG_IDENTITY="${APP_IDENTITY/Developer ID Application:/Developer ID Installer:}"
 fi
 
 # 1. Build the app bundle (ad-hoc signed inside build.sh).
