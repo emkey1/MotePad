@@ -1,5 +1,9 @@
 # MotePad
 
+<p align="center">
+  <img src="assets/motepad-icon.png" alt="MotePad icon — a retro spiral-bound notepad" width="140">
+</p>
+
 A native **aarch64 (Apple Silicon) assembly** port of
 [TinyRetroPad](https://github.com/plummersSoftwareLLC/TinyRetroPad) — a Notepad-style text editor —
 for macOS.

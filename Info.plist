@@ -8,6 +8,8 @@
 	<string>MotePad</string>
 	<key>CFBundleExecutable</key>
 	<string>MotePad</string>
+	<key>CFBundleIconFile</key>
+	<string>MotePad</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.plummerssoftware.motepad</string>
 	<key>CFBundleInfoDictionaryVersion</key>
