@@ -24,6 +24,22 @@ open -a "$PWD/MotePad.app" somefile.txt   # open a file (exercises application:o
 
 `build.sh` produces `MotePad.app` (a normal double-clickable bundle) and ad-hoc code-signs it.
 
+## Install
+
+Download `MotePad-1.0.pkg` from the
+[Releases page](https://github.com/emkey1/MotePad/releases) and double-click it to install MotePad
+into `/Applications`. To build the installer yourself: `./package.sh` (produces
+`dist/MotePad-1.0.pkg`).
+
+The installer and app are **ad-hoc signed** — not notarized with an Apple Developer ID — so macOS
+Gatekeeper will warn that the developer is unidentified. To proceed:
+
+- **Installer:** right-click `MotePad-1.0.pkg` → **Open** → **Open** (or approve it in
+  System Settings → Privacy & Security).
+- **First launch:** right-click `/Applications/MotePad.app` → **Open** → **Open**.
+- Or clear the quarantine flag from a terminal:
+  `xattr -dr com.apple.quarantine /Applications/MotePad.app`
+
 ## How it works
 
 macOS has no way to build a Cocoa app "from syscalls"; the native, idiomatic path is to call AppKit.
