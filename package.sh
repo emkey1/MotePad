@@ -16,8 +16,10 @@
 #        > "Developer ID Application"  and  "Developer ID Installer"
 #   2. Store notarization credentials in the keychain (enter your own secret):
 #        xcrun notarytool store-credentials "MotePad" \
-#          --apple-id "<your-apple-id-email>" --team-id "T82K6293RB" \
+#          --apple-id "<your-apple-id-email>" --team-id "<YOUR-TEAM-ID>" \
 #          --password "<app-specific-password>"
+#      (Team ID: developer.apple.com > Account > Membership, or read it from the
+#       Developer ID cert name via `security find-identity -v`.)
 #      then run:  MOTEPAD_NOTARY_PROFILE=MotePad ./package.sh
 set -euo pipefail
 cd "$(dirname "$0")"
