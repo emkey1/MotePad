@@ -371,6 +371,7 @@ mpcls_start:
     DEFSEL sel_tag,               "tag"
     DEFSEL sel_popUpPositioning,  "popUpMenuPositioningItem:atLocation:inView:"
     DEFSEL sel_winMenu,           "winMenu:"
+    DEFSEL sel_setKeyEquiv,       "setKeyEquivalent:"
     DEFSEL sel_keyEquivalent,     "keyEquivalent"
     DEFSEL sel_keyEquivMask,      "keyEquivalentModifierMask"
     // ruler label attributes
@@ -452,7 +453,7 @@ msg_goto_info:  .asciz "Enter a line number:"
 btn_go:         .asciz "Go"
 // help dialog
 msg_help:       .asciz "MotePad"
-msg_help_info:  .asciz "A native aarch64 (Apple Silicon) port of TinyRetroPad.\n\nFile: New (⌘N), Open (⌘O), Save (⌘S), Save As (⇧⌘S), Page Setup (⇧⌘P), Print (⌘P).\nEdit: Undo/Redo, Cut/Copy/Paste, Find (⌘F), Find Next (⌘G), Replace (⇧⌘F), Go to Line (⌘L), Insert Date and Time.\nFormat: Word Wrap, Show Fonts (⌘T).\nView: Status Bar, Line Numbers.\n\nDrop a text file on the app to open it."
+msg_help_info:  .asciz "A native aarch64 (Apple Silicon) port of TinyRetroPad.\n\nFile: New ⌘N, Open ⌘O, Save ⌘S, Save As ⇧⌘S, Page Setup ⇧⌘P, Print ⌘P.\nEdit: Undo ⌘Z, Redo ⇧⌘Z, Cut ⌘X, Copy ⌘C, Paste ⌘V, Select All ⌘A, Find ⌘F, Find Next ⌘G, Replace ⇧⌘F, Go to Line ⌘L, Insert Date and Time ⌘D.\nFormat: Word Wrap ⌥⌘W, Show Fonts ⌘T.\nView: Status Bar ⌥⌘S, Line Numbers ⌥⌘L.  Help: ⌘?.\n\nOpen a menu from the keyboard: ⌃⌥F File, ⌃⌥E Edit, ⌃⌥O Format, ⌃⌥V View, ⌃⌥H Help.\n\nDrop a text file on the app to open it."
 btn_ok:         .asciz "OK"
 // drag & drop / ruler
 pbtype_files:   .asciz "NSFilenamesPboardType"
@@ -492,6 +493,7 @@ k_a: .asciz "a"
 k_h: .asciz "h"
 k_q: .asciz "q"
 k_d: .asciz "d"
+k_e: .asciz "e"
 k_qmark: .asciz "?"
 
 //==============================================================================
@@ -815,17 +817,20 @@ _setup_ruler:
     ret
 
     .p2align 2
-// _add_winbtn: add one menu-bar button. x0=bar x1=titleCStr x2=tag x3=xpos
+// _add_winbtn: add one menu-bar button.
+//   x0=bar x1=titleCStr x2=tag x3=xpos x4=accessKeyCStr (⌃⌥+key opens the menu)
 _add_winbtn:
-    stp  x29, x30, [sp, #-64]!
+    stp  x29, x30, [sp, #-80]!
     mov  x29, sp
     stp  x19, x20, [sp, #16]
     stp  x21, x22, [sp, #32]
     stp  x23, x24, [sp, #48]
+    stp  x25, x26, [sp, #64]
     mov  x19, x0                       // bar
     mov  x20, x1                       // title cstr
     mov  x21, x2                       // tag
     mov  x22, x3                       // xpos
+    mov  x25, x4                       // access-key cstr
     LDG  x0, cls_NSButton
     CALL sel_alloc
     mov  x23, x0
@@ -862,6 +867,18 @@ _add_winbtn:
     LDG  x1, sel_setAction
     LDG  x2, sel_winMenu
     bl   _objc_msgSend
+    // access key: ⌃⌥ + letter opens this menu from the keyboard
+    mov  x0, x25
+    bl   _nsstr
+    mov  x26, x0
+    mov  x0, x23
+    LDG  x1, sel_setKeyEquiv
+    mov  x2, x26
+    bl   _objc_msgSend
+    mov  x0, x23
+    LDG  x1, sel_setKEMM
+    mov  w2, #(MOD_CTRL|MOD_OPT)
+    bl   _objc_msgSend
     mov  x0, x19
     LDG  x1, sel_addSubview
     mov  x2, x23
@@ -869,7 +886,8 @@ _add_winbtn:
     ldp  x19, x20, [sp, #16]
     ldp  x21, x22, [sp, #32]
     ldp  x23, x24, [sp, #48]
-    ldp  x29, x30, [sp], #64
+    ldp  x25, x26, [sp, #64]
+    ldp  x29, x30, [sp], #80
     ret
 
 // Populate a window-bar menu (x0 = NSMenu) with the same commands as the global
@@ -1032,6 +1050,7 @@ _build_winbar:
     LEA  x1, mt_file
     mov  x2, #0
     mov  x3, #6
+    LEA  x4, k_f
     bl   _add_winbtn
     // Edit
     LDG  x0, cls_NSMenu
@@ -1046,6 +1065,7 @@ _build_winbar:
     LEA  x1, mt_edit
     mov  x2, #1
     mov  x3, #74
+    LEA  x4, k_e
     bl   _add_winbtn
     // Format
     LDG  x0, cls_NSMenu
@@ -1060,6 +1080,7 @@ _build_winbar:
     LEA  x1, mt_format
     mov  x2, #2
     mov  x3, #142
+    LEA  x4, k_o
     bl   _add_winbtn
     // View
     LDG  x0, cls_NSMenu
@@ -1074,6 +1095,7 @@ _build_winbar:
     LEA  x1, mt_view
     mov  x2, #3
     mov  x3, #210
+    LEA  x4, k_v
     bl   _add_winbtn
     // Help
     LDG  x0, cls_NSMenu
@@ -1088,6 +1110,7 @@ _build_winbar:
     LEA  x1, mt_help
     mov  x2, #4
     mov  x3, #278
+    LEA  x4, k_h
     bl   _add_winbtn
     // attach bar to content view
     LDG  x0, gContentView

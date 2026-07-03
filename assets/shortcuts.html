@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MotePad — Keyboard Shortcuts</title>
+<style>
+  @page { size: letter portrait; margin: 0.6in; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    color: #1d1d24; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  header { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #22B8A6; padding-bottom: 12px; }
+  .mark { width: 40px; height: 40px; border-radius: 9px; background: #22B8A6; position: relative; flex: none; }
+  .mark::before { content: ""; position: absolute; left: 9px; top: 8px; right: 9px; bottom: 6px; background: #F7F4E9; border: 2px solid #21282e; }
+  .mark::after { content: ""; position: absolute; left: 12px; right: 12px; top: 13px; height: 3px; background: #F0563A; box-shadow: 0 6px 0 #7c8794, 0 11px 0 #7c8794; }
+  h1 { font-size: 21px; margin: 0; font-weight: 600; }
+  .sub { font-size: 12px; color: #6b6b76; margin-top: 2px; }
+  .cols { column-count: 2; column-gap: 34px; margin-top: 20px; }
+  section { break-inside: avoid; margin-bottom: 18px; }
+  h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+       color: #22887c; margin: 0 0 7px; padding-bottom: 4px; border-bottom: 1px solid #e3e3e8; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 3px 0; font-size: 13px; }
+  .cmd { color: #2b2b33; }
+  .keys { display: flex; gap: 3px; flex: none; }
+  kbd { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 11px; line-height: 1.5;
+        min-width: 15px; text-align: center; padding: 1px 6px; background: #f4f4f6;
+        border: 1px solid #d4d4dc; border-bottom-width: 2px; border-radius: 5px; color: #2b2b33; }
+  .none { font-size: 11px; color: #9a9aa4; }
+  footer { margin-top: 8px; border-top: 1px solid #e3e3e8; padding-top: 8px; font-size: 10.5px; color: #8a8a94; }
+  .accent { color: #F0563A; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="mark"></div>
+    <div>
+      <h1>MotePad — Keyboard Shortcuts</h1>
+      <div class="sub">A native aarch64 macOS port of TinyRetroPad · ⌘ = Command · ⇧ = Shift · ⌥ = Option · ⌃ = Control</div>
+    </div>
+  </header>
+
+  <div class="cols">
+    <section>
+      <h2>File</h2>
+      <div class="row"><span class="cmd">New</span><span class="keys"><kbd>⌘</kbd><kbd>N</kbd></span></div>
+      <div class="row"><span class="cmd">Open…</span><span class="keys"><kbd>⌘</kbd><kbd>O</kbd></span></div>
+      <div class="row"><span class="cmd">Save</span><span class="keys"><kbd>⌘</kbd><kbd>S</kbd></span></div>
+      <div class="row"><span class="cmd">Save As…</span><span class="keys"><kbd>⇧</kbd><kbd>⌘</kbd><kbd>S</kbd></span></div>
+      <div class="row"><span class="cmd">Page Setup…</span><span class="keys"><kbd>⇧</kbd><kbd>⌘</kbd><kbd>P</kbd></span></div>
+      <div class="row"><span class="cmd">Print…</span><span class="keys"><kbd>⌘</kbd><kbd>P</kbd></span></div>
+      <div class="row"><span class="cmd">Close</span><span class="keys"><kbd>⌘</kbd><kbd>W</kbd></span></div>
+      <div class="row"><span class="cmd">Quit MotePad</span><span class="keys"><kbd>⌘</kbd><kbd>Q</kbd></span></div>
+    </section>
+
+    <section>
+      <h2>Edit</h2>
+      <div class="row"><span class="cmd">Undo</span><span class="keys"><kbd>⌘</kbd><kbd>Z</kbd></span></div>
+      <div class="row"><span class="cmd">Redo</span><span class="keys"><kbd>⇧</kbd><kbd>⌘</kbd><kbd>Z</kbd></span></div>
+      <div class="row"><span class="cmd">Cut</span><span class="keys"><kbd>⌘</kbd><kbd>X</kbd></span></div>
+      <div class="row"><span class="cmd">Copy</span><span class="keys"><kbd>⌘</kbd><kbd>C</kbd></span></div>
+      <div class="row"><span class="cmd">Paste</span><span class="keys"><kbd>⌘</kbd><kbd>V</kbd></span></div>
+      <div class="row"><span class="cmd">Delete</span><span class="none">⌦ key</span></div>
+      <div class="row"><span class="cmd">Select All</span><span class="keys"><kbd>⌘</kbd><kbd>A</kbd></span></div>
+      <div class="row"><span class="cmd">Find…</span><span class="keys"><kbd>⌘</kbd><kbd>F</kbd></span></div>
+      <div class="row"><span class="cmd">Find Next</span><span class="keys"><kbd>⌘</kbd><kbd>G</kbd></span></div>
+      <div class="row"><span class="cmd">Replace…</span><span class="keys"><kbd>⇧</kbd><kbd>⌘</kbd><kbd>F</kbd></span></div>
+      <div class="row"><span class="cmd">Go to Line…</span><span class="keys"><kbd>⌘</kbd><kbd>L</kbd></span></div>
+      <div class="row"><span class="cmd">Insert Date and Time</span><span class="keys"><kbd>⌘</kbd><kbd>D</kbd></span></div>
+    </section>
+
+    <section>
+      <h2>Format</h2>
+      <div class="row"><span class="cmd">Word Wrap</span><span class="keys"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>W</kbd></span></div>
+      <div class="row"><span class="cmd">Show Fonts</span><span class="keys"><kbd>⌘</kbd><kbd>T</kbd></span></div>
+    </section>
+
+    <section>
+      <h2>View</h2>
+      <div class="row"><span class="cmd">Status Bar</span><span class="keys"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>S</kbd></span></div>
+      <div class="row"><span class="cmd">Line Numbers</span><span class="keys"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>L</kbd></span></div>
+    </section>
+
+    <section>
+      <h2>Help</h2>
+      <div class="row"><span class="cmd">MotePad Help</span><span class="keys"><kbd>⌘</kbd><kbd>?</kbd></span></div>
+    </section>
+
+    <section>
+      <h2>Open a menu from the keyboard</h2>
+      <div class="row"><span class="cmd">File</span><span class="keys"><kbd>⌃</kbd><kbd>⌥</kbd><kbd>F</kbd></span></div>
+      <div class="row"><span class="cmd">Edit</span><span class="keys"><kbd>⌃</kbd><kbd>⌥</kbd><kbd>E</kbd></span></div>
+      <div class="row"><span class="cmd">Format</span><span class="keys"><kbd>⌃</kbd><kbd>⌥</kbd><kbd>O</kbd></span></div>
+      <div class="row"><span class="cmd">View</span><span class="keys"><kbd>⌃</kbd><kbd>⌥</kbd><kbd>V</kbd></span></div>
+      <div class="row"><span class="cmd">Help</span><span class="keys"><kbd>⌃</kbd><kbd>⌥</kbd><kbd>H</kbd></span></div>
+    </section>
+  </div>
+
+  <footer>
+    In any open menu the shortcut is shown to the right of each command. Format's access key is <span class="accent">O</span>
+    (not F) to avoid clashing with File — the classic Notepad mnemonic.
+  </footer>
+</body>
+</html>

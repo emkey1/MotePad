@@ -64,6 +64,16 @@ Gatekeeper will warn that the developer is unidentified. To proceed:
 - Or clear the quarantine flag from a terminal:
   `xattr -dr com.apple.quarantine /Applications/MotePad.app`
 
+## Keyboard shortcuts
+
+Every command has a ⌘ shortcut — see the printable
+[**shortcut cheat sheet (PDF)**](assets/MotePad-Shortcuts.pdf). Each shortcut is also drawn next to
+its command in both menu bars, and MotePad Help (⌘?) lists them all.
+
+You can **open a menu from the keyboard** too: ⌃⌥F (File), ⌃⌥E (Edit), ⌃⌥O (Format), ⌃⌥V (View),
+⌃⌥H (Help). Format uses **O** — the classic Notepad mnemonic — to avoid clashing with File, and ⌃⌥
+keeps these clear of the ⌘ commands and of the emacs-style ⌃-key text bindings.
+
 ## How it works
 
 macOS has no way to build a Cocoa app "from syscalls"; the native, idiomatic path is to call AppKit.
