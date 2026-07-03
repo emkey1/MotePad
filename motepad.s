@@ -33,6 +33,13 @@
     ldr  \reg, [\reg, \sym@PAGEOFF]
 .endm
 
+// reg = value of an external NSString* const (e.g. NSForegroundColorAttributeName)
+.macro EXTNSSTR reg, sym
+    adrp \reg, \sym@GOTPAGE
+    ldr  \reg, [\reg, \sym@GOTPAGEOFF]
+    ldr  \reg, [\reg]
+.endm
+
 // reg = pointer to an inline, whitespace-free C string (selector/class/type name)
 .macro CSTR reg, str:req
     .pushsection __TEXT,__cstring
@@ -173,6 +180,8 @@ mpcls_start:
     DEFCLS cls_NSRulerView,       "NSRulerView"
     DEFCLS cls_NSArray,           "NSArray"
     DEFCLS cls_NSButton,          "NSButton"
+    DEFCLS cls_NSColor,           "NSColor"
+    DEFCLS cls_NSMutableDictionary,"NSMutableDictionary"
 
 //==============================================================================
 // Cached selectors
@@ -364,6 +373,10 @@ mpcls_start:
     DEFSEL sel_winMenu,           "winMenu:"
     DEFSEL sel_keyEquivalent,     "keyEquivalent"
     DEFSEL sel_keyEquivMask,      "keyEquivalentModifierMask"
+    // ruler label attributes
+    DEFSEL sel_dictionary,        "dictionary"
+    DEFSEL sel_setObjectForKey,   "setObject:forKey:"
+    DEFSEL sel_secondaryLabelColor,"secondaryLabelColor"
 
     // close descriptor tables
     .section __DATA,__mpseldsc
@@ -498,6 +511,7 @@ gRuler:         .quad 0
 gTVClass:       .quad 0
 gWinBar:        .quad 0
 gWinMenus:      .quad 0, 0, 0, 0, 0
+gRulerAttrs:    .quad 0
 gFileURL:       .quad 0
 gDirty:         .byte 0
 gWrap:          .byte 1
@@ -767,6 +781,35 @@ _setup_ruler:
     LDG  x1, sel_setRulersVisible
     mov  w2, #0
     bl   _objc_msgSend
+    // Line-number label attributes: an adaptive color (visible in light + dark)
+    // and a small font. Drawing with nil attributes defaults to black, which is
+    // invisible on the dark ruler in dark mode.
+    LDG  x0, cls_NSMutableDictionary
+    CALL sel_dictionary
+    mov  x19, x0                       // attrs dict (x19/x20 no longer needed here)
+    LDG  x0, cls_NSColor
+    CALL sel_secondaryLabelColor
+    mov  x20, x0
+    mov  x0, x19
+    mov  x2, x20
+    EXTNSSTR x3, _NSForegroundColorAttributeName
+    LDG  x1, sel_setObjectForKey
+    bl   _objc_msgSend
+    LDG  x0, cls_NSFont
+    LDG  x1, sel_systemFontOfSize
+    mov  w9, #11
+    scvtf d0, w9
+    bl   _objc_msgSend
+    mov  x20, x0
+    mov  x0, x19
+    mov  x2, x20
+    EXTNSSTR x3, _NSFontAttributeName
+    LDG  x1, sel_setObjectForKey
+    bl   _objc_msgSend
+    mov  x0, x19
+    CALL sel_retain
+    LEA  x9, gRulerAttrs
+    str  x0, [x9]
     ldp  x19, x20, [sp, #16]
     ldp  x29, x30, [sp], #32
     ret
@@ -2891,7 +2934,7 @@ _imp_ruler_draw:
     mov  w9, #4
     scvtf d0, w9                       // x = 4
     fmov d1, d10                       // y
-    mov  x2, #0                        // nil attributes
+    LDG  x2, gRulerAttrs               // adaptive color + small font
     LDG  x1, sel_drawAtPoint
     bl   _objc_msgSend
     b    41f
