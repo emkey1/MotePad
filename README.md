@@ -10,7 +10,23 @@ runtime. It keeps the original's functionality but adopts the macOS look and fee
 top-of-screen menu bar, ⌘-based shortcuts, native Open/Save panels, the native find bar, the native
 font panel, and the native "document edited" dot in the close button.
 
-![menu bar built by the self-test](#) <!-- run `MOTEPAD_SELFTEST=1 ...` to print the live menu tree -->
+## Origin & credits
+
+The idea and all its heritage come from
+**[TinyRetroPad](https://github.com/plummersSoftwareLLC/TinyRetroPad)** by
+[Plummer's Software LLC](https://github.com/plummersSoftwareLLC) — the ~2.5 KB Windows Notepad clone
+in x86 assembly. That project has a lovely lineage this port is built on:
+
+- **`tiny.asm`** from **Dave Plummer**'s *HelloAssembly* project — the original size-obsessed,
+  minimalist assembly seed.
+- **Dave's Tiny Editor (DTE)** by **Matt Power** — extended `tiny.asm` into a working text editor.
+- **TinyRetroPad** (Plummer's Software LLC) — grew that into a full Notepad-style editor with menus,
+  dialogs, and a status bar.
+- **MotePad** (this project) — an independent, from-scratch native **aarch64/macOS** port of that
+  same idea.
+
+Full credit for the concept and its byte-golfed heritage belongs to Dave Plummer, Matt Power, and the
+TinyRetroPad contributors. MotePad is an homage — it is not affiliated with or endorsed by them.
 
 ## Build & run
 
