@@ -378,6 +378,15 @@ mpcls_start:
     DEFSEL sel_dictionary,        "dictionary"
     DEFSEL sel_setObjectForKey,   "setObject:forKey:"
     DEFSEL sel_secondaryLabelColor,"secondaryLabelColor"
+    // review fixes: additive drag registration, undo reset, launch hook
+    DEFSEL sel_registeredDraggedTypes,"registeredDraggedTypes"
+    DEFSEL sel_arrayByAddingObject,"arrayByAddingObject:"
+    DEFSEL sel_containsObject,    "containsObject:"
+    DEFSEL sel_undoManager,       "undoManager"
+    DEFSEL sel_removeAllActions,  "removeAllActions"
+    DEFSEL sel_appDidFinish,      "applicationDidFinishLaunching:"
+    DEFSEL sel_perfAfterDelay,    "performSelector:withObject:afterDelay:"
+    DEFSEL sel_dragProbe,         "dragProbe:"
 
     // close descriptor tables
     .section __DATA,__mpseldsc
@@ -475,6 +484,8 @@ lncol_sample:   .asciz "abc\ndefgh\nij"
 d_hdr_goto:     .asciz "== goto line 3 (expect Ln 3, Col 1) =="
 goto_sample:    .asciz "L1\nL2\nL3\nL4"
 d_hdr_date:     .asciz "== date sample =="
+d_hdr_drag:     .asciz "== drag types (expect hasFiles=1) =="
+fmt_drag:       .asciz "count=%ld hasFiles=%ld"
 // key equivalents
 k_n: .asciz "n"
 k_o: .asciz "o"
@@ -691,6 +702,8 @@ _make_controller:
     ADDMETHOD x19, sel_validateMenuItem,  _imp_validateMenuItem,  c@:@
     ADDMETHOD x19, sel_openFile,          _imp_openFile,          c@:@@
     ADDMETHOD x19, sel_winMenu,           _imp_winMenu,           v@:@
+    ADDMETHOD x19, sel_appDidFinish,      _imp_appDidFinish,      v@:@
+    ADDMETHOD x19, sel_dragProbe,         _imp_dragProbe,         v@:@
 
     mov  x0, x19
     bl   _objc_registerClassPair
@@ -890,8 +903,9 @@ _add_winbtn:
     ldp  x29, x30, [sp], #80
     ret
 
-// Populate a window-bar menu (x0 = NSMenu) with the same commands as the global
-// menu bar, but with no key equivalents (the global bar owns the shortcuts).
+// Populate a window-bar menu (x0 = NSMenu) with the same commands — and the same
+// displayed key equivalents — as the global menu bar. (Detached popup menus don't
+// participate in key-equivalent dispatch, so nothing double-fires.)
     .p2align 2
 _fill_win_file:
     stp  x29, x30, [sp, #-32]!
@@ -1205,17 +1219,8 @@ _build_window:
     mov  x21, x0
     LEA  x9, gTextView
     str  x21, [x9]
-    // register for file-URL drags: [tv registerForDraggedTypes:@[@"NSFilenamesPboardType"]]
-    LEA  x0, pbtype_files
-    bl   _nsstr
-    mov  x2, x0
-    LDG  x0, cls_NSArray
-    LDG  x1, sel_arrayWithObject
-    bl   _objc_msgSend
-    mov  x2, x0
-    mov  x0, x21
-    LDG  x1, sel_registerForDragged
-    bl   _objc_msgSend
+    // (file-drag registration happens in _register_drag_types, called at the
+    //  end of _build_window and again at launch — see that routine's comment)
     // plain-text (Notepad-like), undo, native find bar
     mov  x0, x21
     mov  w2, #0
@@ -1322,10 +1327,54 @@ _build_window:
     // in-window menu bar, then lay everything out
     bl   _build_winbar
     bl   _relayout
+    // file-drag registration (additive; must run after the view is in the window)
+    bl   _register_drag_types
 
     ldp  x19, x20, [sp, #16]
     ldp  x21, x22, [sp, #32]
     ldp  x29, x30, [sp], #48
+    ret
+
+    .p2align 2
+// _register_drag_types: add NSFilenamesPboardType to the text view's registered
+// drag types WITHOUT dropping the text types NSTextView registered for itself.
+// registerForDraggedTypes: REPLACES the accepted set (it is not additive), and
+// NSTextView re-registers its own set whenever it is reconfigured or moved to a
+// window — so this runs at the end of _build_window and again from
+// applicationDidFinishLaunching:. Idempotent: skips if already registered.
+_register_drag_types:
+    stp  x29, x30, [sp, #-32]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    LDG  x0, gTextView
+    LDG  x1, sel_registeredDraggedTypes
+    bl   _objc_msgSend
+    mov  x19, x0                       // current types (may be nil/empty)
+    LEA  x0, pbtype_files
+    bl   _nsstr
+    mov  x20, x0                       // filenames type string
+    cbz  x19, 1f
+    mov  x0, x19
+    LDG  x1, sel_containsObject
+    mov  x2, x20
+    bl   _objc_msgSend
+    and  w0, w0, #0xff
+    cbnz w0, 3f                        // already registered -> done
+    mov  x0, x19
+    LDG  x1, sel_arrayByAddingObject
+    mov  x2, x20
+    bl   _objc_msgSend
+    b    2f
+1:  LDG  x0, cls_NSArray
+    LDG  x1, sel_arrayWithObject
+    mov  x2, x20
+    bl   _objc_msgSend
+2:  mov  x2, x0
+    LDG  x0, gTextView
+    LDG  x1, sel_registerForDragged
+    bl   _objc_msgSend
+3:  ldp  x19, x20, [sp, #16]
+    ldp  x29, x30, [sp], #32
     ret
 
 //------------------------------------------------------------------------------
@@ -1771,6 +1820,9 @@ Lwmdone:
     bl   _puts_nsstr
     LEA  x9, gStatusVisible
     strb wzr, [x9]                     // restore hidden
+
+    // ---- drag-type registration check ----
+    bl   _print_drag_types
 
     // ---- date sample ----
     LEA  x0, d_hdr_date
@@ -2373,6 +2425,8 @@ _imp_newDoc:
     mov  x0, #0
     bl   _apply_url            // nil -> "Untitled"
     bl   _clear_dirty
+    bl   _reset_undo
+    bl   _ruler_dirty
 1:  ldp  x29, x30, [sp], #16
     ret
 
@@ -2403,6 +2457,8 @@ _imp_openDoc:
     mov  x0, x19
     bl   _apply_url
     bl   _clear_dirty
+    bl   _reset_undo
+    bl   _ruler_dirty
 1:  ldp  x19, x20, [sp, #16]
     ldp  x29, x30, [sp], #32
     ret
@@ -2426,19 +2482,56 @@ _imp_saveAsDoc:
     ret
 
     .p2align 2
-// void textDidChange: -> mark document dirty + refresh Ln/Col
+// _ruler_dirty: if the line-number gutter is visible, mark it for redraw.
+// (NSRulerView only redraws on scroll by itself — without this, editing that
+// adds/removes lines leaves stale numbers until the next scroll.)
+_ruler_dirty:
+    stp  x29, x30, [sp, #-16]!
+    mov  x29, sp
+    LEA  x9, gLineNumbers
+    ldrb w9, [x9]
+    cbz  w9, 1f
+    LDG  x0, gRuler
+    LDG  x1, sel_setNeedsDisplay
+    mov  w2, #1
+    bl   _objc_msgSend
+1:  ldp  x29, x30, [sp], #16
+    ret
+
+    .p2align 2
+// _reset_undo: clear the undo stack (a new/opened document starts fresh —
+// otherwise ⌘Z after New/Open resurrects the previous document's edits)
+_reset_undo:
+    stp  x29, x30, [sp, #-16]!
+    mov  x29, sp
+    LDG  x0, gTextView
+    LDG  x1, sel_undoManager
+    bl   _objc_msgSend
+    LDG  x1, sel_removeAllActions
+    bl   _objc_msgSend
+    ldp  x29, x30, [sp], #16
+    ret
+
+    .p2align 2
+// void textDidChange: -> mark document dirty + refresh Ln/Col + gutter
 _imp_textDidChange:
     stp  x29, x30, [sp, #-16]!
     mov  x29, sp
     bl   _mark_dirty
     bl   _update_status
+    bl   _ruler_dirty
     ldp  x29, x30, [sp], #16
     ret
 
     .p2align 2
-// void textViewDidChangeSelection: -> refresh Ln/Col
+// void textViewDidChangeSelection: -> refresh Ln/Col + gutter
 _imp_selChange:
-    b    _update_status
+    stp  x29, x30, [sp, #-16]!
+    mov  x29, sp
+    bl   _update_status
+    bl   _ruler_dirty
+    ldp  x29, x30, [sp], #16
+    ret
 
     .p2align 2
 // BOOL validateMenuItem: -> keep enabled, drive toggle checkmarks
@@ -2508,6 +2601,7 @@ _imp_toggleWordWrap:
     eor  w8, w8, #1
     strb w8, [x9]
     bl   _apply_wrap
+    bl   _ruler_dirty          // re-wrap moves every line fragment
     ldp  x29, x30, [sp], #16
     ret
 
@@ -2646,6 +2740,8 @@ _imp_gotoLine:
     mov  x21, x0                       // n
     mov  x0, x19
     CALL sel_release
+    mov  x0, x20
+    CALL sel_release                   // drop our alloc ref on the accessory field
     cmp  x22, #1000
     b.ne 1f
     cmp  x21, #1
@@ -2793,6 +2889,8 @@ _open_path:
     mov  x0, x19
     bl   _apply_url
     bl   _clear_dirty
+    bl   _reset_undo
+    bl   _ruler_dirty
     mov  w0, #1
     b    9f
 8:  mov  w0, #0
@@ -2807,18 +2905,11 @@ _imp_openFile:
     b    _open_path
 
     .p2align 2
-// NSDragOperation draggingEntered:/draggingUpdated: -> Copy
-_imp_dragEntered:
-    mov  w0, #1                        // NSDragOperationCopy
-    ret
-
-    .p2align 2
-// BOOL performDragOperation: -> open the first dropped file
-_imp_performDrag:
+// _drag_has_files: x0 = drag-session sender -> x0 = filenames plist, or nil
+_drag_has_files:
     stp  x29, x30, [sp, #-32]!
     mov  x29, sp
     stp  x19, x20, [sp, #16]
-    mov  x0, x2                        // sender
     LDG  x1, sel_draggingPasteboard
     bl   _objc_msgSend
     mov  x19, x0
@@ -2828,19 +2919,141 @@ _imp_performDrag:
     mov  x0, x19
     LDG  x1, sel_propertyListForType
     bl   _objc_msgSend
-    mov  x19, x0                       // files array
-    cbz  x19, 8f
-    mov  x0, x19
-    LDG  x1, sel_objectAtIndex
-    mov  x2, #0
-    bl   _objc_msgSend
-    bl   _open_path
-    mov  w0, #1
-    b    9f
-8:  mov  w0, #0
-9:  ldp  x19, x20, [sp, #16]
+    ldp  x19, x20, [sp, #16]
     ldp  x29, x30, [sp], #32
     ret
+
+    .p2align 2
+// NSDragOperation draggingEntered:/draggingUpdated: -> Copy for file drags;
+// anything else (e.g. dragging selected text within the document) defers to
+// NSTextView via objc_msgSendSuper so text drag-and-drop keeps working.
+_imp_dragEntered:
+    stp  x29, x30, [sp, #-64]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    stp  x21, x22, [sp, #32]
+    mov  x19, x0                       // self
+    mov  x20, x1                       // _cmd (draggingEntered:/draggingUpdated:)
+    mov  x21, x2                       // sender
+    mov  x0, x21
+    bl   _drag_has_files
+    cbz  x0, 1f
+    mov  w0, #1                        // NSDragOperationCopy
+    b    2f
+1:  str  x19, [x29, #48]               // objc_super { self, NSTextView }
+    LDG  x9, cls_NSTextView
+    str  x9, [x29, #56]
+    add  x0, x29, #48
+    mov  x1, x20
+    mov  x2, x21
+    bl   _objc_msgSendSuper
+2:  ldp  x19, x20, [sp, #16]
+    ldp  x21, x22, [sp, #32]
+    ldp  x29, x30, [sp], #64
+    ret
+
+    .p2align 2
+// BOOL performDragOperation: -> open the first dropped file (NO if the user
+// cancels the unsaved prompt); non-file drags defer to NSTextView.
+_imp_performDrag:
+    stp  x29, x30, [sp, #-64]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    stp  x21, x22, [sp, #32]
+    mov  x19, x0                       // self
+    mov  x20, x1                       // _cmd
+    mov  x21, x2                       // sender
+    mov  x0, x21
+    bl   _drag_has_files
+    cbz  x0, 1f
+    LDG  x1, sel_objectAtIndex
+    mov  x2, #0
+    bl   _objc_msgSend                 // first dropped path
+    bl   _open_path                    // w0 = opened?
+    b    2f
+1:  str  x19, [x29, #48]               // objc_super { self, NSTextView }
+    LDG  x9, cls_NSTextView
+    str  x9, [x29, #56]
+    add  x0, x29, #48
+    mov  x1, x20
+    mov  x2, x21
+    bl   _objc_msgSendSuper
+2:  ldp  x19, x20, [sp, #16]
+    ldp  x21, x22, [sp, #32]
+    ldp  x29, x30, [sp], #64
+    ret
+
+    .p2align 2
+// _print_drag_types: print "count=N hasFiles=N" for the text view's registered
+// drag types (self-test / MOTEPAD_DRAGTEST verification).
+_print_drag_types:
+    stp  x29, x30, [sp, #-48]!
+    mov  x29, sp
+    stp  x19, x20, [sp, #16]
+    stp  x21, x22, [sp, #32]
+    LEA  x0, d_hdr_drag
+    bl   _puts
+    LDG  x0, gTextView
+    LDG  x1, sel_registeredDraggedTypes
+    bl   _objc_msgSend
+    mov  x19, x0
+    LDG  x1, sel_count
+    bl   _objc_msgSend
+    mov  x21, x0                       // count
+    LEA  x0, pbtype_files
+    bl   _nsstr
+    mov  x2, x0
+    mov  x0, x19
+    LDG  x1, sel_containsObject
+    bl   _objc_msgSend
+    and  x22, x0, #0xff               // hasFiles
+    LEA  x0, fmt_drag
+    bl   _nsstr
+    mov  x2, x0
+    LDG  x0, cls_NSString
+    LDG  x1, sel_stringWithFormat
+    sub  sp, sp, #16
+    str  x21, [sp]
+    str  x22, [sp, #8]
+    bl   _objc_msgSend
+    add  sp, sp, #16
+    bl   _puts_nsstr
+    ldp  x19, x20, [sp, #16]
+    ldp  x21, x22, [sp, #32]
+    ldp  x29, x30, [sp], #48
+    ret
+
+    .p2align 2
+// void applicationDidFinishLaunching: -> re-assert file-drag registration.
+// Note: NSTextView registers its OWN drag types lazily after launch (replacing
+// this set) — and that set already includes NSFilenamesPboardType, so file
+// drops keep flowing to MPTextView's overrides at steady state; our additive
+// registration covers the pre-lazy window. With MOTEPAD_DRAGTEST=1, schedule a
+// probe 1s out (after the lazy registration) that prints the state and exits.
+_imp_appDidFinish:
+    stp  x29, x30, [sp, #-16]!
+    mov  x29, sp
+    bl   _register_drag_types
+    CSTR x0, MOTEPAD_DRAGTEST
+    bl   _getenv
+    cbz  x0, 1f
+    LDG  x0, gController
+    LDG  x1, sel_perfAfterDelay
+    LDG  x2, sel_dragProbe
+    mov  x3, #0
+    fmov d0, #1.0
+    bl   _objc_msgSend
+1:  ldp  x29, x30, [sp], #16
+    ret
+
+    .p2align 2
+// void dragProbe: -> print steady-state drag registration, then exit (test only)
+_imp_dragProbe:
+    stp  x29, x30, [sp, #-16]!
+    mov  x29, sp
+    bl   _print_drag_types
+    mov  w0, #0
+    bl   _exit
 
     .p2align 2
 // _line_at: x0 = string, x1 = char index -> x0 = 1-based line number
