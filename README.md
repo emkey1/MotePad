@@ -50,19 +50,16 @@ open -a "$PWD/MotePad.app" somefile.txt   # open a file (exercises application:o
 
 ## Install
 
-Download `MotePad-1.2.pkg` from the
-[Releases page](https://github.com/emkey1/MotePad/releases) and double-click it to install MotePad
-into `/Applications`. To build the installer yourself: `./package.sh` (produces
-`dist/MotePad-1.2.pkg`).
+Download `MotePad-1.2.dmg` from the
+[Releases page](https://github.com/emkey1/MotePad/releases), open it, and drag **MotePad** onto the
+**Applications** folder. The app and the disk image are signed with a Developer ID and **notarized by
+Apple**, so it opens with no Gatekeeper warnings.
 
-The installer and app are **ad-hoc signed** — not notarized with an Apple Developer ID — so macOS
-Gatekeeper will warn that the developer is unidentified. To proceed:
-
-- **Installer:** right-click `MotePad-1.2.pkg` → **Open** → **Open** (or approve it in
-  System Settings → Privacy & Security).
-- **First launch:** right-click `/Applications/MotePad.app` → **Open** → **Open**.
-- Or clear the quarantine flag from a terminal:
-  `xattr -dr com.apple.quarantine /Applications/MotePad.app`
+To build it yourself: `./make-dmg.sh`. A notarized build reads your Developer ID Application identity
+and a `notarytool` keychain profile from the environment (`MOTEPAD_APP_IDENTITY` /
+`MOTEPAD_NOTARY_PROFILE`, auto-detected where possible; see the header of `make-dmg.sh`); without
+them it falls back to an ad-hoc-signed `.dmg`. `./package.sh` builds a `.pkg` installer instead if
+you prefer that format (a signed `.pkg` additionally needs a Developer ID Installer certificate).
 
 ## Keyboard shortcuts
 
@@ -139,4 +136,7 @@ MOTEPAD_LINENUMS=1 ./MotePad.app/Contents/MacOS/MotePad    # launch with the lin
 
 - `motepad.s` — the entire program in ARM64 assembly.
 - `build.sh` — assemble, link, and package `MotePad.app`.
+- `make-dmg.sh` — build a Developer ID-signed, notarized, drag-to-install `.dmg`.
+- `package.sh` — build a `.pkg` installer (alternative distribution format).
 - `Info.plist` — bundle metadata (`NSPrincipalClass=NSApplication`, `.txt` document type).
+- `assets/` — app icon (`make-icon.py` → `motepad-icon.png`) and the shortcut cheat sheet.
